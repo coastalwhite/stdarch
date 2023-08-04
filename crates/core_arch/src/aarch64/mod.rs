@@ -12,6 +12,8 @@ pub use self::v8::*;
 mod neon;
 pub use self::neon::*;
 
+pub mod sve;
+
 mod tme;
 pub use self::tme::*;
 

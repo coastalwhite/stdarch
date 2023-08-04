@@ -2,6 +2,11 @@
 #![allow(improper_ctypes_definitions)]
 #![allow(dead_code)]
 #![allow(unused_features)]
+// TODO: We need this for adt_const_params, which is currently marked as incomplete. Our usage is
+// very simple, passing unit-only enums to SVE intrinsics, and the user benefits of passing
+// symbolic values is significant. However, we should remove this allow() once adt_const_params is
+// completed, or consider using plain integers if more problems are found.
+#![allow(incomplete_features)]
 #![deny(rust_2018_idioms)]
 #![feature(
     custom_inner_attributes,
@@ -32,9 +37,14 @@
     asm_const,
     target_feature_11,
     inline_const,
-    generic_arg_infer
+    generic_arg_infer,
+    adt_const_params,
+    unsized_fn_params,
+    unsized_locals,
+    intrinsics,
+    unchecked_math
 )]
-#![cfg_attr(test, feature(test, abi_vectorcall))]
+#![cfg_attr(test, feature(test, abi_vectorcall, lazy_cell))]
 #![deny(clippy::missing_inline_in_public_items)]
 #![allow(
     clippy::inline_always,
