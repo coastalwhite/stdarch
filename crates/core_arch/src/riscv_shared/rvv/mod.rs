@@ -26,12 +26,6 @@ pub enum VectorLengthMultiplier {
 impl ConstParamTy for SelectedElementWidth {}
 impl ConstParamTy for VectorLengthMultiplier {}
 
-#[repr(simd, scalable(8))]
-#[allow(non_camel_case_types)]
-pub struct vint8_t {
-    _ty: [u8],
-}
-
 macro_rules! undef {
     () => {{
         simd_reinterpret(())
@@ -40,11 +34,11 @@ macro_rules! undef {
 
 #[inline]
 #[target_feature(enable = "v")]
-pub unsafe fn vmv_v_x_i8(rs: u8, vl: usize) -> vint8_t {
+pub unsafe fn vmv_v_x_i8(rs: u8, vl: usize) -> vint8 {
     #[allow(improper_ctypes)]
     extern "C" {
         #[link_name = "llvm.riscv.vmv.v.x.nxv8i8"]
-        fn _vmv_v_x_i8(_poison: vint8_t, rs: i8, vl: i64) -> vint8_t;
+        fn _vmv_v_x_i8(_poison: vint8, rs: i8, vl: i64) -> vint8;
     }
 
     unsafe { _vmv_v_x_i8(undef!(), rs as i8, vl as i64) }
@@ -65,38 +59,93 @@ pub unsafe fn vsetvli<const SEW: SelectedElementWidth, const LMUL: VectorLengthM
     unsafe { _vsetvli(vl as i64, SEW as isize as i64, LMUL as isize as i64) as usize }
 }
 
-#[inline]
-#[target_feature(enable = "v")]
-pub unsafe fn vle8_v(ptr: *const u8, vl: usize) -> vint8_t {
-    #[allow(improper_ctypes)]
-    extern "C" {
-        #[link_name = "llvm.riscv.vle.nxv8i8.i64"]
-        fn _vle8_v(_poison: vint8_t, ptr: *const u8, vl: i64) -> vint8_t;
-    }
-
-    unsafe { _vle8_v(undef!(), ptr, vl as i64) }
+macro_rules! impl_rvv_type {
+    ($(($v:vis, $elem_type:ty, $name:ident, $elt:literal))*) => ($(
+        #[repr(simd, scalable($elt))]
+        #[allow(non_camel_case_types)]
+        $v struct $name {
+            _ty: [$elem_type],
+        }
+    )*)
 }
 
-#[inline]
-#[target_feature(enable = "v")]
-pub unsafe fn vse8_v(vs: vint8_t, ptr: *mut u8, vl: usize) {
-    #[allow(improper_ctypes)]
-    extern "C" {
-        #[link_name = "llvm.riscv.vse.nxv8i8.i64"]
-        fn _vse8_v(vs: vint8_t, ptr: *mut u8, vl: i64);
-    }
+macro_rules! intrinsic_fn {
+    ($self:ty, $name:ident {
+        intrinsic: $llvm_intrinsic:literal,
+        signature: ($($param:ident: $param_ty:ty),*) $(-> $ret:ty)?,
+        llvm_signature: ($($llvm_param:ident: $llvm_param_ty:ty),*) $(-> $llvm_ret:ty)?,
+        llvm_eval: ($($eval_param:expr),*) $(,)?
+    }) => {
+        #[inline]
+        #[target_feature(enable = "v")]
+        pub unsafe fn $name($($param: $param_ty),*) $(-> $ret)? {
+            #[allow(improper_ctypes)]
+            extern "unadjusted" {
+                #[link_name = $llvm_intrinsic]
+                fn __llvm_intrinsic($($llvm_param: $llvm_param_ty),*) $(-> $llvm_ret)?;
+            }
 
-    unsafe { _vse8_v(vs, ptr, vl as i64) }
+            unsafe { __llvm_intrinsic($($eval_param),*) }
+        }
+    };
 }
 
-#[inline]
-#[target_feature(enable = "v")]
-pub unsafe fn vadd_vv(vs1: vint8_t, vs2: vint8_t, vl: usize) -> vint8_t {
-    #[allow(improper_ctypes)]
-    extern "C" {
-        #[link_name = "llvm.riscv.vadd.nxv8i8.nxv8i8.i64"]
-        fn _vadd_vv(_poison: vint8_t, op1: vint8_t, op2: vint8_t, vl: i64) -> vint8_t;
-    }
+macro_rules! impl_rvv_fns {
+    ($({$name:ty, $unsigned_elem_type:ty, $signed_elem_type:ty {
+        vl_v: $vl_v:ident => $vl_v_llvm_intrinsic:literal,
+        vs_v: $vs_v:ident => $vs_v_llvm_intrinsic:literal,
+        vadd_vv: $vadd_vv:ident => $vadd_vv_llvm_intrinsic:literal,
+    }})*) => (
+        $(
+        intrinsic_fn!(
+            $name, $vl_v {
+                intrinsic: $vl_v_llvm_intrinsic,
+                signature: (ptr: *const $unsigned_elem_type, vl: usize) -> $name,
+                llvm_signature: (_undef: $name, ptr: *const $signed_elem_type, vl: i64) -> $name,
+                llvm_eval: (undef!(), ptr as *const $signed_elem_type, vl as i64),
+            }
+        );
 
-    unsafe { _vadd_vv(undef!(), vs1, vs2, vl as i64) }
+        intrinsic_fn!(
+            $name, $vs_v {
+                intrinsic: $vs_v_llvm_intrinsic,
+                signature: (vs: $name, ptr: *mut $unsigned_elem_type, vl: usize),
+                llvm_signature: (vs: $name, ptr: *mut $signed_elem_type, vl: i64),
+                llvm_eval: (vs, ptr as *mut $signed_elem_type, vl as i64),
+            }
+        );
+
+        intrinsic_fn!(
+            $name, $vadd_vv {
+                intrinsic: $vadd_vv_llvm_intrinsic,
+                signature: (vs1: $name, vs2: $name, vl: usize) -> $name,
+                llvm_signature: (_undef: $name, vs1: $name, vs2: $name, vl: i64) -> $name,
+                llvm_eval: (undef!(), vs1, vs2, vl as i64),
+            }
+        );
+    )*)
+}
+
+impl_rvv_type! {
+    (pub, u8, vint8, 8)
+    (pub, u16, vint16, 16)
+    (pub, u32, vint32, 32)
+    (pub, u64, vint64, 16)
+}
+
+impl_rvv_fns! {
+    {
+        vint8, u8, i8 {
+            vl_v: vle8_v => "llvm.riscv.vle.nxv8i8.i64",
+            vs_v: vse8_v => "llvm.riscv.vse.nxv8i8.i64",
+            vadd_vv: vadd_e8_vv => "llvm.riscv.vadd.nxv8i8.nxv8i8.i64",
+        }
+    }
+    {
+        vint16, u16, i16 {
+            vl_v: vle16_v => "llvm.riscv.vle.nxv8i16.i64",
+            vs_v: vse16_v => "llvm.riscv.vse.nxv8i16.i64",
+            vadd_vv: vadd_e16_vv => "llvm.riscv.vadd.nxv8i16.nxv8i16.i64",
+        }
+    }
 }
