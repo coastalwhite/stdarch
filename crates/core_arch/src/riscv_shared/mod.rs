@@ -1,7 +1,9 @@
 //! Shared RISC-V intrinsics
 mod p;
+mod rvv;
 
 pub use p::*;
+pub use rvv::*;
 
 use crate::arch::asm;
 
