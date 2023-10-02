@@ -1,7 +1,9 @@
 #![allow(incomplete_features)]
 #![feature(stdsimd, riscv_target_feature, unsized_locals, unsized_fn_params)]
 
-use core_arch::arch::riscv64::{vadd_vv, vle8_v, vse8_v, vsetvli};
+use core_arch::arch::riscv64::{
+    vadd_vv, vle8_v, vse8_v, vsetvli, SelectedElementWidth, VectorLengthMultiplier,
+};
 
 // examples/vadd.rs
 #[inline(never)]
@@ -17,7 +19,7 @@ unsafe fn vadd(x: &[u8], y: &[u8], result: &mut [u8]) {
     let mut result = result as *mut [u8] as *mut u8;
 
     while vl > 0 {
-        let avl = unsafe { vsetvli(vl, 0) };
+        let avl = unsafe { vsetvli(vl, SelectedElementWidth::E8, VectorLengthMultiplier::M1) };
 
         let vx = unsafe { vle8_v(x, vl) };
         let vy = unsafe { vle8_v(y, vl) };

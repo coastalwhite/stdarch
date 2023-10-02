@@ -1,4 +1,30 @@
+use core::marker::ConstParamTy;
+
 use crate::core_arch::simd_llvm::simd_reinterpret;
+
+#[repr(isize)]
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum SelectedElementWidth {
+    E8 = 0b000,
+    E16 = 0b001,
+    E32 = 0b010,
+    E64 = 0b011,
+}
+
+#[repr(isize)]
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum VectorLengthMultiplier {
+    F8 = 0b101,
+    F4 = 0b110,
+    F2 = 0b111,
+    M1 = 0b000,
+    M2 = 0b001,
+    M4 = 0b010,
+    M8 = 0b011,
+}
+
+impl ConstParamTy for SelectedElementWidth {}
+impl ConstParamTy for VectorLengthMultiplier {}
 
 #[repr(simd, scalable(8))]
 #[allow(non_camel_case_types)]
@@ -26,15 +52,17 @@ pub unsafe fn vmv_v_x_i8(rs: u8, vl: usize) -> vint8_t {
 
 #[inline]
 #[target_feature(enable = "v")]
-#[rustc_legacy_const_generics(1)]
-pub unsafe fn vsetvli<const ELEMENT: i64>(vl: usize) -> usize {
+#[rustc_legacy_const_generics(1, 2)]
+pub unsafe fn vsetvli<const SEW: SelectedElementWidth, const LMUL: VectorLengthMultiplier>(
+    vl: usize,
+) -> usize {
     #[allow(improper_ctypes)]
     extern "C" {
         #[link_name = "llvm.riscv.vsetvli.i64"]
         fn _vsetvli(vl: i64, ei: i64, mi: i64) -> i64;
     }
 
-    unsafe { _vsetvli(vl as i64, ELEMENT, 5) as usize }
+    unsafe { _vsetvli(vl as i64, SEW as isize as i64, LMUL as isize as i64) as usize }
 }
 
 #[inline]
