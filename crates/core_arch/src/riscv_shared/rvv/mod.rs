@@ -12,7 +12,9 @@ macro_rules! undef {
     }};
 }
 
-pub fn vmv_v_x_i8(rs: u8, vl: usize) -> vint8_t {
+#[inline]
+#[target_feature(enable = "v")]
+pub unsafe fn vmv_v_x_i8(rs: u8, vl: usize) -> vint8_t {
     #[allow(improper_ctypes)]
     extern "C" {
         #[link_name = "llvm.riscv.vmv.v.x.nxv8i8"]
@@ -23,8 +25,9 @@ pub fn vmv_v_x_i8(rs: u8, vl: usize) -> vint8_t {
 }
 
 #[inline]
+#[target_feature(enable = "v")]
 #[rustc_legacy_const_generics(1)]
-pub fn vsetvli<const ELEMENT: i64>(vl: usize) -> usize {
+pub unsafe fn vsetvli<const ELEMENT: i64>(vl: usize) -> usize {
     #[allow(improper_ctypes)]
     extern "C" {
         #[link_name = "llvm.riscv.vsetvli.i64"]
@@ -35,7 +38,8 @@ pub fn vsetvli<const ELEMENT: i64>(vl: usize) -> usize {
 }
 
 #[inline]
-pub fn vle8_v(ptr: *const u8, vl: usize) -> vint8_t {
+#[target_feature(enable = "v")]
+pub unsafe fn vle8_v(ptr: *const u8, vl: usize) -> vint8_t {
     #[allow(improper_ctypes)]
     extern "C" {
         #[link_name = "llvm.riscv.vle.nxv8i8.i64"]
@@ -46,7 +50,8 @@ pub fn vle8_v(ptr: *const u8, vl: usize) -> vint8_t {
 }
 
 #[inline]
-pub fn vse8_v(vs: vint8_t, ptr: *mut u8, vl: usize) {
+#[target_feature(enable = "v")]
+pub unsafe fn vse8_v(vs: vint8_t, ptr: *mut u8, vl: usize) {
     #[allow(improper_ctypes)]
     extern "C" {
         #[link_name = "llvm.riscv.vse.nxv8i8.i64"]
@@ -57,7 +62,8 @@ pub fn vse8_v(vs: vint8_t, ptr: *mut u8, vl: usize) {
 }
 
 #[inline]
-pub fn vadd_vv(vs1: vint8_t, vs2: vint8_t, vl: usize) -> vint8_t {
+#[target_feature(enable = "v")]
+pub unsafe fn vadd_vv(vs1: vint8_t, vs2: vint8_t, vl: usize) -> vint8_t {
     #[allow(improper_ctypes)]
     extern "C" {
         #[link_name = "llvm.riscv.vadd.nxv8i8.nxv8i8.i64"]

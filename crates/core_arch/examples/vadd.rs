@@ -1,4 +1,5 @@
-#![feature(stdsimd, riscv_target_feature, unsized_locals)]
+#![allow(incomplete_features)]
+#![feature(stdsimd, riscv_target_feature, unsized_locals, unsized_fn_params)]
 
 use core_arch::arch::riscv64::{vadd_vv, vle8_v, vse8_v, vsetvli};
 
