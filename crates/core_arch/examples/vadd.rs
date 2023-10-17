@@ -2,8 +2,8 @@
 #![feature(stdsimd, riscv_target_feature, unsized_locals, unsized_fn_params)]
 
 use core_arch::arch::riscv64::{
-    vadd_e16_vv, vadd_e8_vv, vle16_v, vle8_v, vse16_v, vse8_v, vsetvli, SelectedElementWidth,
-    VectorLengthMultiplier,
+    vadd_vv_i16m1, vadd_vv_i8m1, vle16_v_i16m1, vle8_v_i8m1, vse16_v_i16m1, vse8_v_i8m1, vsetvli,
+    SelectedElementWidth, VectorLengthMultiplier,
 };
 
 // examples/vadd.rs
@@ -22,12 +22,12 @@ unsafe fn vadd8(x: &[u8], y: &[u8], result: &mut [u8]) {
     while vl > 0 {
         let avl = unsafe { vsetvli(vl, SelectedElementWidth::E8, VectorLengthMultiplier::M1) };
 
-        let vx = unsafe { vle8_v(x, vl) };
-        let vy = unsafe { vle8_v(y, vl) };
+        let vx = unsafe { vle8_v_i8m1(x, vl) };
+        let vy = unsafe { vle8_v_i8m1(y, vl) };
 
-        let vresult = unsafe { vadd_e8_vv(vx, vy, vl) };
+        let vresult = unsafe { vadd_vv_i8m1(vx, vy, vl) };
 
-        unsafe { vse8_v(vresult, result, vl) };
+        unsafe { vse8_v_i8m1(vresult, result, vl) };
 
         vl -= avl;
 
@@ -54,12 +54,12 @@ unsafe fn vadd16(x: &[u16], y: &[u16], result: &mut [u16]) {
     while vl > 0 {
         let avl = unsafe { vsetvli(vl, SelectedElementWidth::E16, VectorLengthMultiplier::M1) };
 
-        let vx = unsafe { vle16_v(x, vl) };
-        let vy = unsafe { vle16_v(y, vl) };
+        let vx = unsafe { vle16_v_i16m1(x, vl) };
+        let vy = unsafe { vle16_v_i16m1(y, vl) };
 
-        let vresult = unsafe { vadd_e16_vv(vx, vy, vl) };
+        let vresult = unsafe { vadd_vv_i16m1(vx, vy, vl) };
 
-        unsafe { vse16_v(vresult, result, vl) };
+        unsafe { vse16_v_i16m1(vresult, result, vl) };
 
         vl -= avl;
 
